@@ -839,7 +839,12 @@
         }, []);
 
         const [tab, setTab] = useState("home");
-        const [state, setState] = useState({ logs: [], wellbeing: [], books: [] });
+        const [state, setState] = useState(() => {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          const parsed = raw ? safeParse(raw) : null;
+          return normalizeState(parsed);
+});
+
         const [selectedDate, setSelectedDate] = useState(() => toISODate(new Date()));
 
         const TIME_SCALES = [
@@ -862,11 +867,7 @@
         const [expandReading, setExpandReading] = useState(false);
         const [expandStudy, setExpandStudy] = useState(false);
 
-        useEffect(() => {
-          const raw = localStorage.getItem(STORAGE_KEY);
-          const parsed = raw ? safeParse(raw) : null;
-          setState(normalizeState(parsed));
-        }, []);
+        
 
         useEffect(() => {
           localStorage.setItem(STORAGE_KEY, JSON.stringify(normalizeState(state)));
@@ -1533,3 +1534,4 @@
     </script>
   </body>
 </html>
+
