@@ -1176,7 +1176,7 @@
               />
               <GaugeTile
                 category="GOAL METRICS"
-                name="STUDY"
+                name="Deep Work"
                 status={statusKey(weekly.study.done, weekly.study.expected)}
                 valueLeft={`${weekly.study.done}/${weekly.study.goal}`}
                 paceRight={`PACE ${weekly.study.done}/${weekly.study.expected}`}
@@ -1337,7 +1337,7 @@
 
                   <HabitRow
                     icon={<IconBrain />}
-                    label="Study"
+                    label="Deep Work"
                     checked={!!logForDate.study}
                     disabled={studyDisabled}
                     onToggle={(v) => setLogField("study", v)}
@@ -1444,7 +1444,7 @@
                   {tileFor("workout", "WORKOUT", "GOAL METRICS", false)}
                   {tileFor("reading", "READING", "GOAL METRICS", true)}
                   {tileFor("journal", "JOURNAL", "GOAL METRICS", false)}
-                  {tileFor("study", "STUDY", "GOAL METRICS", true)}
+                  {tileFor("study", "Deep Work", "GOAL METRICS", true)}
                   {tileFor("reflection", "REFLECTION", "GOAL METRICS", false)}
                 </div>
 
@@ -1534,4 +1534,5 @@
     </script>
   </body>
 </html>
+
 
