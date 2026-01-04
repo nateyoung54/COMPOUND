@@ -1,0 +1,1521 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>COMPOUND</title>
+
+    <!-- Tailwind (fast prototype) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- React 18 UMD (dev for better runtime errors) -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <!-- React 18 createRoot lives here in UMD builds -->
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom-client.development.js"></script>
+
+    <!-- Babel for JSX in a single HTML file -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+      :root {
+        --bg: #000000;
+        --surface: #0e0e0e;
+        --surfaceHi: rgba(255, 255, 255, 0.06);
+        --ink: rgba(255, 255, 255, 0.92);
+        --muted: rgba(255, 255, 255, 0.64);
+        --muted2: rgba(255, 255, 255, 0.46);
+        --line: rgba(255, 255, 255, 0.12);
+        --line2: rgba(255, 255, 255, 0.08);
+
+        /* Status tints (dark-friendly) */
+        --onSoft: rgba(46, 143, 94, 0.22);
+        --catchSoft: rgba(201, 150, 64, 0.20);
+        --behindSoft: rgba(222, 82, 105, 0.20);
+
+        --onBorder: rgba(46, 143, 94, 0.35);
+        --catchBorder: rgba(201, 150, 64, 0.32);
+        --behindBorder: rgba(222, 82, 105, 0.32);
+
+        --shadow: 0 12px 26px rgba(0, 0, 0, 0.65);
+        --radius: 18px;
+      }
+
+      html,
+      body {
+        height: 100%;
+      }
+
+      body {
+        margin: 0;
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial,
+          "Apple Color Emoji", "Segoe UI Emoji";
+        background: var(--bg);
+        color: var(--ink);
+      }
+
+      /* CRITICAL: ensure a solid black paint on the root + outer wrapper */
+      #root {
+        min-height: 100vh;
+        background: #000;
+      }
+
+      .appShell {
+        min-height: 100vh;
+        background: #000;
+        color: var(--ink);
+      }
+
+      .card {
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        background: var(--surface);
+        box-shadow: var(--shadow);
+      }
+
+      .status-on {
+        background: linear-gradient(0deg, var(--onSoft), var(--onSoft)), var(--surface);
+        border-color: var(--onBorder);
+      }
+      .status-catch {
+        background: linear-gradient(0deg, var(--catchSoft), var(--catchSoft)), var(--surface);
+        border-color: var(--catchBorder);
+      }
+      .status-behind {
+        background: linear-gradient(0deg, var(--behindSoft), var(--behindSoft)), var(--surface);
+        border-color: var(--behindBorder);
+      }
+
+      .label {
+        font-size: 11px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--muted);
+        font-weight: 900;
+      }
+
+      .title {
+        font-weight: 950;
+        letter-spacing: -0.02em;
+      }
+
+      .tab {
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 8px 14px;
+        font-size: 12px;
+        font-weight: 950;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+        background: rgba(255, 255, 255, 0.05);
+        transition: transform 120ms ease, background 120ms ease;
+      }
+      .tab:hover {
+        background: rgba(255, 255, 255, 0.08);
+      }
+      .tab:active {
+        transform: translateY(1px);
+      }
+      .tab-active {
+        background: rgba(255, 255, 255, 0.12);
+        color: var(--ink);
+      }
+
+      .pill {
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.06);
+        border-radius: 999px;
+        padding: 8px 12px;
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        box-shadow: var(--shadow);
+      }
+
+      input[type="date"],
+      input[type="number"],
+      select {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.08);
+        padding: 10px 12px;
+        font-weight: 900;
+        color: var(--ink);
+        outline: none;
+      }
+
+      input[type="date"]::-webkit-calendar-picker-indicator {
+        filter: invert(1) opacity(0.7);
+      }
+
+      /* KPI row: 2 cols on mobile, 5 on desktop */
+      @media (min-width: 1024px) {
+        .kpi-row {
+          grid-template-columns: repeat(5, minmax(0, 1fr));
+        }
+      }
+
+      /* Log list rows */
+      .habit-row {
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.04);
+        box-shadow: var(--shadow);
+        padding: 18px 16px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+      }
+      .habit-row.on {
+        background: linear-gradient(0deg, var(--onSoft), var(--onSoft)), rgba(255, 255, 255, 0.03);
+        border-color: rgba(46, 143, 94, 0.28);
+      }
+      .habit-row.disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
+
+      .icon-badge {
+        width: 44px;
+        height: 44px;
+        border-radius: 999px;
+        border: 1px solid var(--line2);
+        background: rgba(255, 255, 255, 0.04);
+        display: grid;
+        place-items: center;
+        flex: 0 0 auto;
+      }
+
+      .check-dot {
+        width: 34px;
+        height: 34px;
+        border-radius: 999px;
+        border: 3px solid rgba(255, 255, 255, 0.28);
+        background: transparent;
+        display: grid;
+        place-items: center;
+        flex: 0 0 auto;
+      }
+      .check-dot.on {
+        border-color: rgba(46, 143, 94, 0.55);
+        background: rgba(46, 143, 94, 0.28);
+      }
+
+      .btn {
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.10);
+        border-radius: 14px;
+        padding: 10px 12px;
+        font-weight: 950;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        font-size: 12px;
+        color: var(--ink);
+      }
+      .btn:active {
+        transform: translateY(1px);
+      }
+
+      .sessions-panel {
+        margin-top: 10px;
+        border-top: 1px solid var(--line2);
+        padding-top: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .counter-btn {
+        width: 40px;
+        height: 40px;
+        border-radius: 14px;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.08);
+        display: grid;
+        place-items: center;
+        font-weight: 950;
+        color: var(--ink);
+      }
+
+      /* Weekly check-in cards */
+      .checkin-card {
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.04);
+        box-shadow: var(--shadow);
+        padding: 16px;
+      }
+
+      .slider {
+        width: 100%;
+        height: 8px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.16);
+        outline: none;
+        -webkit-appearance: none;
+        appearance: none;
+      }
+      .slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 22px;
+        height: 22px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.92);
+        border: 2px solid rgba(0, 0, 0, 0.55);
+      }
+
+      .row-wide {
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.04);
+        box-shadow: var(--shadow);
+        padding: 18px 16px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+      }
+
+      /* Simple lever visual for Home well-being cards */
+      .leverTrack {
+        position: relative;
+        width: 22px;
+        height: 64px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.10);
+        border: 1px solid var(--line2);
+        overflow: hidden;
+      }
+      .leverKnob {
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 20px;
+        height: 20px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.92);
+        border: 2px solid rgba(0, 0, 0, 0.6);
+      }
+
+      button:focus-visible,
+      input:focus-visible,
+      select:focus-visible {
+        outline: 2px solid rgba(255, 255, 255, 0.25);
+        outline-offset: 2px;
+      }
+
+      /* In-page runtime error overlay */
+      .errorOverlay {
+        position: fixed;
+        left: 16px;
+        right: 16px;
+        bottom: 16px;
+        z-index: 50;
+        border: 1px solid rgba(222, 82, 105, 0.45);
+        background: rgba(14, 14, 14, 0.96);
+        border-radius: 14px;
+        padding: 12px;
+        box-shadow: var(--shadow);
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="root"></div>
+
+    <script type="text/babel" data-presets="env,react">
+      const { useEffect, useMemo, useRef, useState } = React;
+
+      const STORAGE_KEY = "compound_dark_vnext";
+
+      // ---------- Date utilities (local time, week starts Monday) ----------
+      function pad2(n) {
+        return n < 10 ? `0${n}` : `${n}`;
+      }
+      function toISODate(d) {
+        return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+      }
+      function fromISODate(s) {
+        const [y, m, d] = String(s || "").split("-").map(Number);
+        return new Date(y || 1970, (m || 1) - 1, d || 1, 12, 0, 0, 0);
+      }
+      function startOfDay(d) {
+        const x = new Date(d);
+        x.setHours(0, 0, 0, 0);
+        return x;
+      }
+      function addDays(d, n) {
+        const x = new Date(d);
+        x.setDate(x.getDate() + n);
+        return x;
+      }
+      function startOfWeekMonday(d) {
+        const x = startOfDay(d);
+        const day = x.getDay();
+        const diff = (day + 6) % 7; // Mon=0
+        x.setDate(x.getDate() - diff);
+        return x;
+      }
+      function weekStartISO(d) {
+        return toISODate(startOfWeekMonday(d));
+      }
+      function clamp(n, lo, hi) {
+        return Math.max(lo, Math.min(hi, n));
+      }
+      function safeParse(s) {
+        try {
+          return JSON.parse(s);
+        } catch {
+          return null;
+        }
+      }
+      function uid() {
+        return Math.random().toString(16).slice(2) + Date.now().toString(16);
+      }
+      function daysInMonth(year, monthIndex) {
+        return new Date(year, monthIndex + 1, 0).getDate();
+      }
+
+      function possibleSoFarByWeekCap({ startInclusive, endInclusive, capPerWeek, dayPredicate }) {
+        const pred = dayPredicate || (() => true);
+        const start = startOfDay(startInclusive);
+        const end = startOfDay(endInclusive);
+        const byWeek = new Map();
+        for (let d = new Date(start); d <= end; d = addDays(d, 1)) {
+          if (!pred(d)) continue;
+          const ws = weekStartISO(d);
+          byWeek.set(ws, (byWeek.get(ws) || 0) + 1);
+        }
+        let sum = 0;
+        for (const c of byWeek.values()) sum += Math.min(capPerWeek, c);
+        return sum;
+      }
+
+      // ---------- Pace + status ----------
+      function expectedWeeklyWorkout(elapsedDaysInWeek, goal) {
+        return Math.min(goal, Math.ceil((elapsedDaysInWeek * goal) / 7));
+      }
+      function expectedWeeklyDaily(elapsedDaysInWeek, goal) {
+        return Math.min(goal, elapsedDaysInWeek);
+      }
+      function expectedWeeklyDeepWork(elapsedDaysInWeek, goal) {
+        return Math.min(goal, Math.ceil((elapsedDaysInWeek * goal) / 7));
+      }
+      function expectedWeeklyReflection(elapsedDaysInWeek) {
+        return elapsedDaysInWeek >= 7 ? 1 : 0; // 0 until Sunday
+      }
+      function expectedBooksByDay(dayOfMonth, dim, goal) {
+        return Math.min(goal, Math.ceil((dayOfMonth * goal) / dim));
+      }
+
+      function statusKey(done, expected) {
+        const d = Number.isFinite(done) ? done : 0;
+        const e = Number.isFinite(expected) ? expected : 0;
+        if (e <= 0) return d > 0 ? "on" : "catch";
+        if (d >= e) return "on";
+        if (d >= e - 1) return "catch";
+        return "behind";
+      }
+      function statusLabel(key) {
+        if (key === "on") return "ON PACE";
+        if (key === "catch") return "CATCH UP";
+        return "BEHIND";
+      }
+      function paceNeedle(done, expected) {
+        const d = Number.isFinite(done) ? done : 0;
+        const e = Math.max(1, Number.isFinite(expected) ? expected : 1);
+        return clamp(d / e, 0, 1);
+      }
+      function statusClass(key) {
+        if (key === "on") return "status-on";
+        if (key === "catch") return "status-catch";
+        return "status-behind";
+      }
+
+      // Well-being status rules
+      function wellbeingStatus(value) {
+        if (value === null || value === undefined || !Number.isFinite(value)) return "behind";
+        if (value >= 8) return "on";
+        if (value >= 6) return "catch";
+        return "behind";
+      }
+      function weightStatus(weight) {
+        return typeof weight === "number" && Number.isFinite(weight) ? "on" : "behind";
+      }
+
+      // ---------- State normalization (self-healing + legacy migration) ----------
+      function normalizeState(parsed) {
+        const DEFAULT = { logs: [], wellbeing: [], books: [] };
+        if (!parsed || typeof parsed !== "object") return DEFAULT;
+
+        const logsRaw = Array.isArray(parsed.logs) ? parsed.logs : [];
+        const wbRaw = Array.isArray(parsed.wellbeing) ? parsed.wellbeing : [];
+        const booksRaw = Array.isArray(parsed.books) ? parsed.books : [];
+
+        const logs = logsRaw
+          .filter((x) => x && typeof x === "object" && typeof x.date === "string")
+          .map((x) => {
+            const date = String(x.date);
+
+            const readingSessions = Number.isFinite(x.readingSessions)
+              ? Math.max(0, Math.floor(Number(x.readingSessions)))
+              : 0;
+
+            // Legacy migration: deepWorkSessions OR old studySessions
+            const legacySessions = x.studySessions;
+            const deepWorkSessionsRaw = Number.isFinite(x.deepWorkSessions) ? x.deepWorkSessions : legacySessions;
+            const deepWorkSessions = Number.isFinite(deepWorkSessionsRaw)
+              ? Math.max(0, Math.floor(Number(deepWorkSessionsRaw)))
+              : 0;
+
+            let reading = !!x.reading || readingSessions > 0;
+
+            // Legacy migration: deepWork OR old study
+            const legacyFlag = x.study;
+            const deepWorkRaw = typeof x.deepWork === "boolean" ? x.deepWork : legacyFlag;
+            let deepWork = !!deepWorkRaw || deepWorkSessions > 0;
+
+            // Sessions imply completion
+            if (readingSessions > 0) reading = true;
+            if (deepWorkSessions > 0) deepWork = true;
+
+            // Toggling off forces sessions to 0
+            const cleanReadingSessions = reading ? readingSessions : 0;
+            const cleanDeepWorkSessions = deepWork ? deepWorkSessions : 0;
+
+            return {
+              date,
+              workout: !!x.workout,
+              reading,
+              journal: !!x.journal,
+              deepWork,
+              readingSessions: cleanReadingSessions,
+              deepWorkSessions: cleanDeepWorkSessions,
+            };
+          });
+
+        const seenDates = new Set();
+        const dedupLogs = logs
+          .sort((a, b) => (a.date < b.date ? 1 : -1))
+          .filter((l) => (seenDates.has(l.date) ? false : (seenDates.add(l.date), true)));
+
+        const wellbeing = wbRaw
+          .filter((x) => x && typeof x === "object" && typeof x.weekStart === "string")
+          .map((x) => {
+            const mh = Number.isFinite(x.mentalHealth) ? clamp(Number(x.mentalHealth), 0, 10) : null;
+            const sl = Number.isFinite(x.socialLife) ? clamp(Number(x.socialLife), 0, 10) : null;
+            const fam = Number.isFinite(x.family) ? clamp(Number(x.family), 0, 10) : null;
+            const w = Number.isFinite(x.weight) ? Number(x.weight) : null;
+            return {
+              weekStart: String(x.weekStart),
+              mentalHealth: mh,
+              socialLife: sl,
+              family: fam,
+              weight: w,
+              reflectionDone: !!x.reflectionDone,
+            };
+          });
+
+        const seenWeeks = new Set();
+        const dedupWb = wellbeing
+          .sort((a, b) => (a.weekStart < b.weekStart ? 1 : -1))
+          .filter((w) => (seenWeeks.has(w.weekStart) ? false : (seenWeeks.add(w.weekStart), true)));
+
+        const books = booksRaw
+          .filter((x) => x && typeof x === "object" && typeof x.id === "string" && typeof x.date === "string")
+          .map((x) => ({ id: String(x.id), date: String(x.date) }))
+          .sort((a, b) => (a.date < b.date ? 1 : -1));
+
+        return { logs: dedupLogs, wellbeing: dedupWb, books };
+      }
+
+      // ---------- Self-tests ----------
+      function runSelfTests() {
+        console.assert(weekStartISO(fromISODate("2026-01-04")) === "2025-12-29", "weekStartISO Sunday should roll back");
+        console.assert(expectedWeeklyDeepWork(1, 4) === 1, "Deep Work expected early week -> 1");
+        console.assert(expectedWeeklyWorkout(1, 5) === 1, "Workout expected Monday -> 1");
+        console.assert(paceNeedle(2, 2) === 1, "Needle full scale on pace 2/2");
+        console.assert(wellbeingStatus(null) === "behind", "Null wellbeing should be behind");
+        console.assert(weightStatus(null) === "behind", "Missing weight should be behind");
+      }
+
+      // ---------- Icons (inline SVG) ----------
+      function IconPulse() {
+        return (
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "rgba(255,255,255,0.78)" }}>
+            <path d="M22 12h-4l-3 7-4-14-3 7H2" />
+          </svg>
+        );
+      }
+      function IconBook() {
+        return (
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "rgba(255,255,255,0.78)" }}>
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+            <path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5A2.5 2.5 0 0 0 4 19.5v-15Z" />
+          </svg>
+        );
+      }
+      function IconPen() {
+        return (
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "rgba(255,255,255,0.78)" }}>
+            <path d="M17 3a2.85 2.85 0 1 1 4 4L7 21l-4 1 1-4L17 3Z" />
+            <path d="m15 5 4 4" />
+          </svg>
+        );
+      }
+      function IconBrain() {
+        return (
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "rgba(255,255,255,0.78)" }}>
+            <path d="M9 18a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2" />
+            <path d="M15 18a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2" />
+            <path d="M8 4a2 2 0 0 0-2 2v2" />
+            <path d="M16 4a2 2 0 0 1 2 2v2" />
+            <path d="M12 4a2 2 0 0 0-2 2v3" />
+            <path d="M12 4a2 2 0 0 1 2 2v3" />
+            <path d="M10 11a2 2 0 0 0-2 2v3" />
+            <path d="M14 11a2 2 0 0 1 2 2v3" />
+          </svg>
+        );
+      }
+      function IconCheck() {
+        return (
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.92)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20 6 9 17l-5-5" />
+          </svg>
+        );
+      }
+
+      function Tabs({ tab, setTab }) {
+        return (
+          <div className="flex flex-wrap gap-2 justify-end">
+            <button className={`tab ${tab === "home" ? "tab-active" : ""}`} onClick={() => setTab("home")}>
+              Home
+            </button>
+            <button className={`tab ${tab === "log" ? "tab-active" : ""}`} onClick={() => setTab("log")}>
+              Log
+            </button>
+            <button className={`tab ${tab === "insights" ? "tab-active" : ""}`} onClick={() => setTab("insights")}>
+              Insights
+            </button>
+          </div>
+        );
+      }
+
+      // Speedometer gauge: 270° sweep (no wrap), so 100% is always in green zone
+      function Gauge({ needle, size = 86, stroke = 10 }) {
+        const pct = clamp(needle, 0, 1);
+        const r = (size - stroke) / 2;
+        const cx = size / 2,
+          cy = size / 2;
+
+        const startAng = 135; // left-bottom
+        const sweep = 270;
+
+        const polar = (ang) => {
+          const a = (ang - 90) * (Math.PI / 180);
+          return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) };
+        };
+
+        const arc = (start, end) => {
+          const s = polar(start);
+          const e = polar(end);
+          const delta = end - start;
+          const large = Math.abs(delta) > 180 ? 1 : 0;
+          const sweepFlag = 1;
+          return `M ${s.x.toFixed(2)} ${s.y.toFixed(2)} A ${r.toFixed(2)} ${r.toFixed(2)} 0 ${large} ${sweepFlag} ${e.x.toFixed(2)} ${e.y.toFixed(2)}`;
+        };
+
+        const redEnd = startAng + sweep * 0.6;
+        const yellowEnd = startAng + sweep * 0.8;
+        const endAng = startAng + sweep;
+
+        const needleAng = startAng + sweep * pct;
+        const tip = polar(needleAng);
+
+        return (
+          <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-label="Gauge">
+            <circle cx={cx} cy={cy} r={r + 7} fill="rgba(255,255,255,0.03)" />
+            <circle cx={cx} cy={cy} r={r + 5} fill="rgba(0,0,0,0.55)" />
+            <circle cx={cx} cy={cy} r={r - 6} fill="rgba(255,255,255,0.04)" />
+
+            <path d={arc(startAng, endAng)} fill="none" stroke="rgba(255,255,255,0.10)" strokeWidth={stroke} strokeLinecap="round" />
+
+            <path d={arc(startAng, redEnd)} fill="none" stroke="rgba(222,82,105,0.50)" strokeWidth={stroke} strokeLinecap="round" />
+            <path d={arc(redEnd, yellowEnd)} fill="none" stroke="rgba(201,150,64,0.50)" strokeWidth={stroke} strokeLinecap="round" />
+            <path d={arc(yellowEnd, endAng)} fill="none" stroke="rgba(46,143,94,0.60)" strokeWidth={stroke} strokeLinecap="round" />
+
+            <line x1={cx} y1={cy} x2={tip.x} y2={tip.y} stroke="rgba(255,255,255,0.92)" strokeWidth="2.6" />
+            <circle cx={cx} cy={cy} r="5.5" fill="rgba(255,255,255,0.92)" />
+            <circle cx={cx} cy={cy} r="2.5" fill="rgba(0,0,0,0.75)" />
+          </svg>
+        );
+      }
+
+      function GaugeTile({ category, name, status, valueLeft, paceRight, subRight, needle, headerRight }) {
+        return (
+          <div className={`card ${statusClass(status)} p-3 overflow-hidden`}>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <div className="label">{category}</div>
+                  {headerRight ? <div className="ml-auto">{headerRight}</div> : null}
+                </div>
+                <div className="mt-1 title text-lg leading-tight truncate">{name}</div>
+                <div className="mt-1 text-sm font-black tracking-wide" style={{ color: "var(--muted)" }}>
+                  {statusLabel(status)}
+                </div>
+              </div>
+              <div className="shrink-0">
+                <Gauge needle={needle} />
+              </div>
+            </div>
+
+            <div className="mt-2 flex items-end justify-between">
+              <div className="text-3xl font-black tracking-tight tabular-nums">{valueLeft}</div>
+              <div className="text-right">
+                <div className="text-sm font-black tabular-nums" style={{ color: "var(--muted)" }}>
+                  {paceRight}
+                </div>
+                {subRight ? (
+                  <div className="text-xs font-bold" style={{ color: "var(--muted2)" }}>
+                    {subRight}
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      function SectionHeader({ title, right }) {
+        return (
+          <div className="flex items-center justify-between">
+            <div className="title text-2xl md:text-3xl">{title}</div>
+            {right}
+          </div>
+        );
+      }
+
+      function HabitRow({ icon, label, checked, disabled, onToggle, expanded, onExpand, children }) {
+        return (
+          <div>
+            <div
+              className={`habit-row ${checked ? "on" : ""} ${disabled ? "disabled" : ""}`}
+              role="button"
+              tabIndex={0}
+              onClick={() => {
+                if (disabled) return;
+                onToggle && onToggle(!checked);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  if (!disabled) onToggle && onToggle(!checked);
+                }
+              }}
+              style={{ cursor: disabled ? "not-allowed" : "pointer" }}
+            >
+              <div className="flex items-center gap-4 min-w-0">
+                <div className="icon-badge">{icon}</div>
+                <div className="min-w-0">
+                  <div className="title text-xl md:text-2xl truncate">{label}</div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                {(label === "Reading" || label === "Deep Work") && !disabled ? (
+                  <button
+                    className="btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onExpand && onExpand(!expanded);
+                    }}
+                    style={{ padding: "10px 10px" }}
+                    aria-label="Toggle sessions"
+                  >
+                    Sessions
+                  </button>
+                ) : null}
+
+                <div className={`check-dot ${checked ? "on" : ""}`} aria-label={checked ? "Checked" : "Unchecked"}>
+                  {checked ? <IconCheck /> : null}
+                </div>
+              </div>
+            </div>
+
+            {expanded ? children : null}
+          </div>
+        );
+      }
+
+      function SessionsInline({ value, onDec, onInc }) {
+        return (
+          <div className="sessions-panel">
+            <div className="label">Sessions</div>
+            <div className="flex items-center gap-2">
+              <button className="counter-btn" onClick={onDec} aria-label="Decrease sessions">
+                −
+              </button>
+              <div className="w-10 text-center text-xl font-black tabular-nums">{value}</div>
+              <button className="counter-btn" onClick={onInc} aria-label="Increase sessions">
+                +
+              </button>
+            </div>
+          </div>
+        );
+      }
+
+      function CheckinCard({ title, value, onChange }) {
+        const display = value === null || value === undefined ? "-" : String(value);
+        return (
+          <div className="checkin-card">
+            <div className="flex items-start justify-between">
+              <div className="label">{title}</div>
+              <div className="text-xl font-black tabular-nums" style={{ color: "var(--ink)" }}>
+                {display}
+              </div>
+            </div>
+            <div className="mt-4">
+              <input
+                className="slider"
+                type="range"
+                min={0}
+                max={10}
+                step={1}
+                value={Number.isFinite(value) ? value : 0}
+                onChange={(e) => onChange(Number(e.target.value))}
+              />
+            </div>
+          </div>
+        );
+      }
+
+      function LeverMini({ value, isWeight }) {
+        // value 0..10 => knob position (top=10)
+        // weight => knob at middle (cosmetic) when logged
+        const logged = value !== null && value !== undefined && Number.isFinite(value);
+        const pct = isWeight ? (logged ? 0.5 : 0.06) : logged ? clamp(value / 10, 0, 1) : 0.06;
+        const topPx = Math.round((1 - pct) * (64 - 20));
+        return (
+          <div className="leverTrack">
+            <div className="leverKnob" style={{ top: `${topPx}px` }} />
+          </div>
+        );
+      }
+
+      function App() {
+        // In-page error capture (helps avoid "Script error" mysteries)
+        const [runtimeError, setRuntimeError] = useState(null);
+        useEffect(() => {
+          const onError = (message, source, lineno, colno, error) => {
+            const detail = error && error.stack ? error.stack : String(message);
+            setRuntimeError(detail);
+          };
+          const onRejection = (e) => {
+            const detail = e && e.reason ? (e.reason.stack ? e.reason.stack : String(e.reason)) : "Unhandled rejection";
+            setRuntimeError(detail);
+          };
+          window.addEventListener("error", onError);
+          window.addEventListener("unhandledrejection", onRejection);
+          return () => {
+            window.removeEventListener("error", onError);
+            window.removeEventListener("unhandledrejection", onRejection);
+          };
+        }, []);
+
+        const didTest = useRef(false);
+        useEffect(() => {
+          if (!didTest.current) {
+            didTest.current = true;
+            runSelfTests();
+          }
+        }, []);
+
+        const [tab, setTab] = useState("home");
+
+        const [state, setState] = useState(() => {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          const parsed = raw ? safeParse(raw) : null;
+          return normalizeState(parsed);
+        });
+
+        const [selectedDate, setSelectedDate] = useState(() => toISODate(new Date()));
+
+        const TIME_SCALES = [
+          { key: "MTD", label: "MTD" },
+          { key: "YTD", label: "YTD" },
+          { key: "R30", label: "Rolling 30" },
+          { key: "R90", label: "Rolling 90" },
+          { key: "W12", label: "Last 12 weeks" },
+        ];
+
+        const [scaleByMetric, setScaleByMetric] = useState({
+          workout: "MTD",
+          reading: "MTD",
+          journal: "MTD",
+          deepWork: "MTD",
+          reflection: "MTD",
+          books: "MTD",
+        });
+
+        const [expandReading, setExpandReading] = useState(false);
+        const [expandDeepWork, setExpandDeepWork] = useState(false);
+
+        useEffect(() => {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(normalizeState(state)));
+        }, [state]);
+
+        const currentWeekStart = useMemo(() => startOfWeekMonday(new Date()), []);
+        const currentWeekStartISO = useMemo(() => toISODate(currentWeekStart), [currentWeekStart]);
+
+        // ---------- Log helpers ----------
+        const selectedWeekStartISO = useMemo(() => weekStartISO(fromISODate(selectedDate)), [selectedDate]);
+
+        const logForDate = useMemo(() => {
+          const l = state.logs.find((x) => x.date === selectedDate);
+          return (
+            l || {
+              date: selectedDate,
+              workout: false,
+              reading: false,
+              journal: false,
+              deepWork: false,
+              readingSessions: 0,
+              deepWorkSessions: 0,
+            }
+          );
+        }, [state.logs, selectedDate]);
+
+        function upsertLog(next) {
+          setState((s) => normalizeState({ ...s, logs: [next, ...s.logs.filter((l) => l.date !== next.date)] }));
+        }
+
+        function setLogField(field, value) {
+          const next = { ...logForDate, [field]: value };
+
+          if (field === "reading") {
+            if (!value) next.readingSessions = 0;
+            else if (next.readingSessions === 0) next.readingSessions = 1;
+          }
+
+          if (field === "deepWork") {
+            if (!value) next.deepWorkSessions = 0;
+            else if (next.deepWorkSessions === 0) next.deepWorkSessions = 1;
+          }
+
+          upsertLog(next);
+        }
+
+        function incSession(kind) {
+          const next = { ...logForDate };
+
+          if (kind === "reading") {
+            next.readingSessions = Math.max(0, next.readingSessions) + 1;
+            next.reading = true;
+          } else if (kind === "deepWork") {
+            next.deepWorkSessions = Math.max(0, next.deepWorkSessions) + 1;
+            next.deepWork = true;
+          }
+          upsertLog(next);
+        }
+
+        function decSession(kind) {
+          const next = { ...logForDate };
+
+          if (kind === "reading") {
+            next.readingSessions = Math.max(0, next.readingSessions - 1);
+            if (next.readingSessions === 0) next.reading = false;
+          } else if (kind === "deepWork") {
+            next.deepWorkSessions = Math.max(0, next.deepWorkSessions - 1);
+            if (next.deepWorkSessions === 0) next.deepWork = false;
+          }
+          upsertLog(next);
+        }
+
+        // ---------- Wellbeing helpers ----------
+        const wbForWeek = useMemo(() => {
+          const wb = state.wellbeing.find((w) => w.weekStart === selectedWeekStartISO);
+          return (
+            wb || {
+              weekStart: selectedWeekStartISO,
+              mentalHealth: null,
+              socialLife: null,
+              family: null,
+              weight: null,
+              reflectionDone: false,
+            }
+          );
+        }, [state.wellbeing, selectedWeekStartISO]);
+
+        const wbCurrentWeek = useMemo(() => {
+          const wb = state.wellbeing.find((w) => w.weekStart === currentWeekStartISO);
+          return (
+            wb || {
+              weekStart: currentWeekStartISO,
+              mentalHealth: null,
+              socialLife: null,
+              family: null,
+              weight: null,
+              reflectionDone: false,
+            }
+          );
+        }, [state.wellbeing, currentWeekStartISO]);
+
+        function upsertWb(next) {
+          setState((s) => normalizeState({ ...s, wellbeing: [next, ...s.wellbeing.filter((w) => w.weekStart !== next.weekStart)] }));
+        }
+
+        // ---------- Books ----------
+        function addBook() {
+          setState((s) => normalizeState({ ...s, books: [{ id: uid(), date: toISODate(new Date()) }, ...s.books] }));
+        }
+
+        // ---------- Weekly computations (current week) ----------
+        const weekly = useMemo(() => {
+          const ws = currentWeekStart;
+          const we = addDays(ws, 7);
+
+          const weekLogs = state.logs.filter((l) => {
+            const d = fromISODate(l.date);
+            return d >= ws && d < we;
+          });
+
+          let workout = 0,
+            reading = 0,
+            journal = 0,
+            deepWork = 0,
+            readingSessions = 0,
+            deepWorkSessions = 0;
+
+          for (const l of weekLogs) {
+            if (l.workout) workout++;
+            if (l.reading) reading++;
+            if (l.journal) journal++;
+            if (l.deepWork) deepWork++;
+            readingSessions += l.readingSessions || 0;
+            deepWorkSessions += l.deepWorkSessions || 0;
+          }
+
+          const elapsedDays = clamp(Math.floor((startOfDay(new Date()) - ws) / (24 * 60 * 60 * 1000)) + 1, 1, 7);
+
+          const expWorkout = expectedWeeklyWorkout(elapsedDays, 5);
+          const expReading = expectedWeeklyDaily(elapsedDays, 7);
+          const expJournal = expectedWeeklyDaily(elapsedDays, 7);
+          const expDeepWork = expectedWeeklyDeepWork(elapsedDays, 4);
+          const expReflection = expectedWeeklyReflection(elapsedDays);
+
+          const rangeLabel = `${ws.toLocaleDateString(undefined, { month: "short", day: "numeric" })}–${addDays(ws, 6).toLocaleDateString(undefined, { month: "short", day: "numeric" })}`;
+
+          return {
+            rangeLabel,
+            workout: { done: workout, goal: 5, expected: expWorkout },
+            reading: { done: reading, goal: 7, expected: expReading, sessions: readingSessions },
+            journal: { done: journal, goal: 7, expected: expJournal },
+            deepWork: { done: deepWork, goal: 4, expected: expDeepWork, sessions: deepWorkSessions },
+            reflection: { done: wbCurrentWeek.reflectionDone ? 1 : 0, goal: 1, expected: expReflection },
+          };
+        }, [state.logs, currentWeekStart, wbCurrentWeek.reflectionDone]);
+
+        // Books MTD
+        const booksMTD = useMemo(() => {
+          const now = new Date();
+          const start = new Date(now.getFullYear(), now.getMonth(), 1);
+          const end = startOfDay(now);
+          const endExcl = addDays(end, 1);
+          const done = state.books.filter((b) => {
+            const d = fromISODate(b.date);
+            return d >= start && d < endExcl;
+          }).length;
+          const dim = daysInMonth(now.getFullYear(), now.getMonth());
+          const expected = expectedBooksByDay(now.getDate(), dim, 4);
+          return { done, goal: 4, expected, day: `${now.getDate()}/${dim}` };
+        }, [state.books]);
+
+        // ---------- Insights ranges ----------
+        function getRangeForScale(scale) {
+          const now = new Date();
+          const end = startOfDay(now);
+          if (scale === "MTD") return { start: new Date(now.getFullYear(), now.getMonth(), 1), end };
+          if (scale === "YTD") return { start: new Date(now.getFullYear(), 0, 1), end };
+          if (scale === "R30") return { start: addDays(end, -29), end };
+          if (scale === "R90") return { start: addDays(end, -89), end };
+          if (scale === "W12") return { start: addDays(end, -83), end };
+          return { start: new Date(now.getFullYear(), now.getMonth(), 1), end };
+        }
+
+        function computeRangeStats(range, metric, scaleKey) {
+          const start = startOfDay(range.start);
+          const end = startOfDay(range.end);
+          const endExclusive = addDays(end, 1);
+
+          const logs = state.logs.filter((l) => {
+            const d = fromISODate(l.date);
+            return d >= start && d < endExclusive;
+          });
+
+          let doneDays = 0;
+          let sessions = 0;
+
+          for (const l of logs) {
+            if (metric === "workout" && l.workout) doneDays++;
+            if (metric === "reading" && l.reading) doneDays++;
+            if (metric === "journal" && l.journal) doneDays++;
+            if (metric === "deepWork" && l.deepWork) doneDays++;
+
+            if (metric === "reading") sessions += l.readingSessions || 0;
+            if (metric === "deepWork") sessions += l.deepWorkSessions || 0;
+          }
+
+          const totalDays = Math.floor((end - start) / (24 * 60 * 60 * 1000)) + 1;
+
+          if (metric === "reading" || metric === "journal") {
+            const expected = totalDays;
+            const target = totalDays;
+            return { done: doneDays, expected, target, sessions };
+          }
+
+          if (metric === "workout") {
+            const expected = possibleSoFarByWeekCap({ startInclusive: start, endInclusive: end, capPerWeek: 5 });
+            const target = expected;
+            return { done: doneDays, expected, target, sessions };
+          }
+
+          if (metric === "deepWork") {
+            const expected = possibleSoFarByWeekCap({ startInclusive: start, endInclusive: end, capPerWeek: 4 });
+            const target = expected;
+            return { done: doneDays, expected, target, sessions };
+          }
+
+          if (metric === "reflection") {
+            const weeks = new Set();
+            for (let d = new Date(start); d <= end; d = addDays(d, 1)) weeks.add(weekStartISO(d));
+            const target = weeks.size;
+            const done = state.wellbeing.filter((w) => w.reflectionDone && weeks.has(w.weekStart)).length;
+            return { done, expected: target, target, sessions: 0 };
+          }
+
+          if (metric === "books") {
+            const done = state.books.filter((b) => {
+              const d = fromISODate(b.date);
+              return d >= start && d < endExclusive;
+            }).length;
+
+            const now = new Date();
+            if (scaleKey === "MTD") {
+              const dim = daysInMonth(now.getFullYear(), now.getMonth());
+              const expected = expectedBooksByDay(now.getDate(), dim, 4);
+              return { done, expected, target: 4, sessions: 0 };
+            }
+            if (scaleKey === "YTD") {
+              const monthsElapsed = now.getMonth() + 1;
+              const target = monthsElapsed * 4;
+              return { done, expected: target, target, sessions: 0 };
+            }
+
+            // Approx for rolling windows
+            const expected = Math.max(0, Math.ceil((totalDays * 4) / 30));
+            return { done, expected, target: expected, sessions: 0 };
+          }
+
+          return { done: 0, expected: 0, target: 0, sessions: 0 };
+        }
+
+        // ---------- Pages ----------
+        const HomePage = (
+          <div className="space-y-3">
+            <div className="card p-4">
+              <SectionHeader title={weekly.rangeLabel} />
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 kpi-row">
+              <GaugeTile
+                category="GOAL METRICS"
+                name="WORKOUT"
+                status={statusKey(weekly.workout.done, weekly.workout.expected)}
+                valueLeft={`${weekly.workout.done}/${weekly.workout.goal}`}
+                paceRight={`PACE ${weekly.workout.done}/${weekly.workout.expected}`}
+                needle={paceNeedle(weekly.workout.done, weekly.workout.expected)}
+              />
+              <GaugeTile
+                category="GOAL METRICS"
+                name="READING"
+                status={statusKey(weekly.reading.done, weekly.reading.expected)}
+                valueLeft={`${weekly.reading.done}/${weekly.reading.goal}`}
+                paceRight={`PACE ${weekly.reading.done}/${weekly.reading.expected}`}
+                subRight={`Sessions: ${weekly.reading.sessions}`}
+                needle={paceNeedle(weekly.reading.done, weekly.reading.expected)}
+              />
+              <GaugeTile
+                category="GOAL METRICS"
+                name="JOURNAL"
+                status={statusKey(weekly.journal.done, weekly.journal.expected)}
+                valueLeft={`${weekly.journal.done}/${weekly.journal.goal}`}
+                paceRight={`PACE ${weekly.journal.done}/${weekly.journal.expected}`}
+                needle={paceNeedle(weekly.journal.done, weekly.journal.expected)}
+              />
+              <GaugeTile
+                category="GOAL METRICS"
+                name="DEEP WORK"
+                status={statusKey(weekly.deepWork.done, weekly.deepWork.expected)}
+                valueLeft={`${weekly.deepWork.done}/${weekly.deepWork.goal}`}
+                paceRight={`PACE ${weekly.deepWork.done}/${weekly.deepWork.expected}`}
+                subRight={`Sessions: ${weekly.deepWork.sessions}`}
+                needle={paceNeedle(weekly.deepWork.done, weekly.deepWork.expected)}
+              />
+              <GaugeTile
+                category="GOAL METRICS"
+                name="REFLECTION"
+                status={statusKey(weekly.reflection.done, weekly.reflection.expected)}
+                valueLeft={`${weekly.reflection.done}/${weekly.reflection.goal}`}
+                paceRight={`PACE ${weekly.reflection.done}/${weekly.reflection.expected}`}
+                subRight="Due by Sunday"
+                needle={paceNeedle(weekly.reflection.done, Math.max(1, weekly.reflection.expected))}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 gap-2 lg:grid-cols-3">
+              <div className="card p-4 lg:col-span-2">
+                <div className="flex items-center justify-between">
+                  <div className="title text-2xl">Well-being</div>
+                  <div className="text-sm font-black" style={{ color: "var(--muted)" }}>
+                    Reflection: {wbCurrentWeek.reflectionDone ? "DONE" : "NOT DONE"}
+                  </div>
+                </div>
+
+                <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-4">
+                  <div className={`card ${statusClass(wellbeingStatus(wbCurrentWeek.mentalHealth))} p-3`}>
+                    <div className="label">Well-being</div>
+                    <div className="title text-xl mt-1">Mental</div>
+                    <div className="mt-3 flex items-end justify-between">
+                      <div className="text-3xl font-black tabular-nums">
+                        {wbCurrentWeek.mentalHealth === null ? "—" : wbCurrentWeek.mentalHealth}
+                      </div>
+                      <LeverMini value={wbCurrentWeek.mentalHealth} />
+                    </div>
+                    <div className="mt-2 text-xs font-bold" style={{ color: "var(--muted2)" }}>
+                      0–10 self rating
+                    </div>
+                  </div>
+
+                  <div className={`card ${statusClass(wellbeingStatus(wbCurrentWeek.socialLife))} p-3`}>
+                    <div className="label">Well-being</div>
+                    <div className="title text-xl mt-1">Social</div>
+                    <div className="mt-3 flex items-end justify-between">
+                      <div className="text-3xl font-black tabular-nums">
+                        {wbCurrentWeek.socialLife === null ? "—" : wbCurrentWeek.socialLife}
+                      </div>
+                      <LeverMini value={wbCurrentWeek.socialLife} />
+                    </div>
+                    <div className="mt-2 text-xs font-bold" style={{ color: "var(--muted2)" }}>
+                      0–10 self rating
+                    </div>
+                  </div>
+
+                  <div className={`card ${statusClass(wellbeingStatus(wbCurrentWeek.family))} p-3`}>
+                    <div className="label">Well-being</div>
+                    <div className="title text-xl mt-1">Family</div>
+                    <div className="mt-3 flex items-end justify-between">
+                      <div className="text-3xl font-black tabular-nums">{wbCurrentWeek.family === null ? "—" : wbCurrentWeek.family}</div>
+                      <LeverMini value={wbCurrentWeek.family} />
+                    </div>
+                    <div className="mt-2 text-xs font-bold" style={{ color: "var(--muted2)" }}>
+                      0–10 self rating
+                    </div>
+                  </div>
+
+                  <div className={`card ${statusClass(weightStatus(wbCurrentWeek.weight))} p-3`}>
+                    <div className="label">Well-being</div>
+                    <div className="title text-xl mt-1">Weight</div>
+                    <div className="mt-3 flex items-end justify-between">
+                      <div className="text-lg font-black" style={{ color: "var(--muted)" }}>
+                        {typeof wbCurrentWeek.weight === "number" && Number.isFinite(wbCurrentWeek.weight) ? `${wbCurrentWeek.weight} lbs` : "Not logged"}
+                      </div>
+                      <LeverMini value={wbCurrentWeek.weight} isWeight />
+                    </div>
+                    <div className="mt-2 text-xs font-bold" style={{ color: "var(--muted2)" }}>
+                      Weekly weigh-in
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="card p-4">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <div className="title text-2xl">Books</div>
+                    <div className="text-sm font-black" style={{ color: "var(--muted)" }}>
+                      Month-to-date
+                    </div>
+                  </div>
+                  <button className="btn" onClick={addBook}>
+                    +1 BOOK
+                  </button>
+                </div>
+
+                <div className="mt-3">
+                  <GaugeTile
+                    category="GOAL METRICS"
+                    name="BOOKS (MTD)"
+                    status={statusKey(booksMTD.done, booksMTD.expected)}
+                    valueLeft={`${booksMTD.done}/${booksMTD.goal}`}
+                    paceRight={`PACE ${booksMTD.done}/${booksMTD.expected}`}
+                    subRight={`Day ${booksMTD.day}`}
+                    needle={paceNeedle(booksMTD.done, booksMTD.expected)}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+
+        const LogPage = (() => {
+          const ws = startOfWeekMonday(fromISODate(selectedDate));
+          const rangeLabel = `${ws.toLocaleDateString(undefined, { month: "short", day: "numeric" })}–${addDays(ws, 6).toLocaleDateString(undefined, { month: "short", day: "numeric" })}`;
+
+          return (
+            <div className="space-y-3">
+              <div className="card p-4 flex items-center justify-between gap-2 flex-wrap">
+                <div className="pill">
+                  <div className="label">Date</div>
+                  <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} />
+                </div>
+              </div>
+
+              <div className="card p-4">
+                <div className="label">Daily Habits</div>
+                <div className="mt-3 space-y-2">
+                  <HabitRow
+                    icon={<IconPulse />}
+                    label="Workout"
+                    checked={!!logForDate.workout}
+                    disabled={false}
+                    onToggle={(v) => setLogField("workout", v)}
+                  />
+
+                  <HabitRow
+                    icon={<IconBook />}
+                    label="Reading"
+                    checked={!!logForDate.reading}
+                    disabled={false}
+                    onToggle={(v) => setLogField("reading", v)}
+                    expanded={expandReading}
+                    onExpand={setExpandReading}
+                  >
+                    <SessionsInline value={logForDate.readingSessions || 0} onDec={() => decSession("reading")} onInc={() => incSession("reading")} />
+                  </HabitRow>
+
+                  <HabitRow
+                    icon={<IconPen />}
+                    label="Journal"
+                    checked={!!logForDate.journal}
+                    disabled={false}
+                    onToggle={(v) => setLogField("journal", v)}
+                  />
+
+                  <HabitRow
+                    icon={<IconBrain />}
+                    label="Deep Work"
+                    checked={!!logForDate.deepWork}
+                    disabled={false}
+                    onToggle={(v) => setLogField("deepWork", v)}
+                    expanded={expandDeepWork}
+                    onExpand={setExpandDeepWork}
+                  >
+                    <SessionsInline value={logForDate.deepWorkSessions || 0} onDec={() => decSession("deepWork")} onInc={() => incSession("deepWork")} />
+                  </HabitRow>
+                </div>
+              </div>
+
+              <div className="card p-4">
+                <div className="label">Weekly Check-in ({rangeLabel})</div>
+
+                <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <CheckinCard
+                    title="MENTAL"
+                    value={wbForWeek.mentalHealth}
+                    onChange={(v) => upsertWb({ ...wbForWeek, weekStart: selectedWeekStartISO, mentalHealth: v })}
+                  />
+                  <CheckinCard
+                    title="SOCIAL"
+                    value={wbForWeek.socialLife}
+                    onChange={(v) => upsertWb({ ...wbForWeek, weekStart: selectedWeekStartISO, socialLife: v })}
+                  />
+                  <CheckinCard
+                    title="FAMILY"
+                    value={wbForWeek.family}
+                    onChange={(v) => upsertWb({ ...wbForWeek, weekStart: selectedWeekStartISO, family: v })}
+                  />
+
+                  <div className="checkin-card">
+                    <div className="label">WEIGHT</div>
+                    <div className="mt-3">
+                      <input
+                        type="number"
+                        placeholder="lbs"
+                        value={wbForWeek.weight === null || wbForWeek.weight === undefined ? "" : wbForWeek.weight}
+                        onChange={(e) => {
+                          const raw = e.target.value;
+                          const v = raw === "" ? null : Number(raw);
+                          upsertWb({ ...wbForWeek, weekStart: selectedWeekStartISO, weight: Number.isFinite(v) ? v : null });
+                        }}
+                        className="w-full"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div
+                  className="mt-2 row-wide"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => upsertWb({ ...wbForWeek, weekStart: selectedWeekStartISO, reflectionDone: !wbForWeek.reflectionDone })}
+                >
+                  <div className="title text-xl">Weekly Reflection Done</div>
+                  <div className={`check-dot ${wbForWeek.reflectionDone ? "on" : ""}`}>{wbForWeek.reflectionDone ? <IconCheck /> : null}</div>
+                </div>
+              </div>
+            </div>
+          );
+        })();
+
+        const InsightsPage = (() => {
+          const makeScaleSelect = (metricKey) => (
+            <select
+              value={scaleByMetric[metricKey]}
+              onChange={(e) => setScaleByMetric((s) => ({ ...s, [metricKey]: e.target.value }))}
+              aria-label={`Timescale for ${metricKey}`}
+            >
+              {TIME_SCALES.map((t) => (
+                <option key={t.key} value={t.key}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
+          );
+
+          function tileFor(metricKey, title, category, showSessions) {
+            const scaleKey = scaleByMetric[metricKey];
+            const range = getRangeForScale(scaleKey);
+            const stats = computeRangeStats(range, metricKey, scaleKey);
+
+            const sub = showSessions ? `Sessions: ${stats.sessions}` : null;
+
+            return (
+              <GaugeTile
+                category={category}
+                name={title}
+                status={statusKey(stats.done, stats.expected)}
+                valueLeft={`${stats.done}/${stats.target}`}
+                paceRight={`PACE ${stats.done}/${stats.expected}`}
+                subRight={sub}
+                needle={paceNeedle(stats.done, stats.expected)}
+                headerRight={makeScaleSelect(metricKey)}
+              />
+            );
+          }
+
+          return (
+            <div className="space-y-3">
+              <div className="card p-4">
+                <SectionHeader title="Insights" />
+              </div>
+
+              <div className="grid grid-cols-1 gap-2 lg:grid-cols-3">
+                <div className="grid grid-cols-2 gap-2 lg:col-span-2 kpi-row">
+                  {tileFor("workout", "WORKOUT", "GOAL METRICS", false)}
+                  {tileFor("reading", "READING", "GOAL METRICS", true)}
+                  {tileFor("journal", "JOURNAL", "GOAL METRICS", false)}
+                  {tileFor("deepWork", "DEEP WORK", "GOAL METRICS", true)}
+                  {tileFor("reflection", "REFLECTION", "GOAL METRICS", false)}
+                </div>
+
+                <div className="card p-4">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <div className="title text-2xl">Books</div>
+                      <div className="text-sm font-black" style={{ color: "var(--muted)" }}>
+                        Completion events
+                      </div>
+                    </div>
+                    <button className="btn" onClick={addBook}>
+                      +1 BOOK
+                    </button>
+                  </div>
+
+                  <div className="mt-3">
+                    {(() => {
+                      const scaleKey = scaleByMetric.books;
+                      const range = getRangeForScale(scaleKey);
+                      const stats = computeRangeStats(range, "books", scaleKey);
+                      return (
+                        <GaugeTile
+                          category="GOAL METRICS"
+                          name={`BOOKS (${scaleKey})`}
+                          status={statusKey(stats.done, stats.expected)}
+                          valueLeft={`${stats.done}/${stats.target}`}
+                          paceRight={`PACE ${stats.done}/${stats.expected}`}
+                          needle={paceNeedle(stats.done, stats.expected)}
+                          headerRight={makeScaleSelect("books")}
+                        />
+                      );
+                    })()}
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })();
+
+        const page = tab === "home" ? HomePage : tab === "log" ? LogPage : InsightsPage;
+
+        return (
+          <div className="appShell">
+            <div className="max-w-6xl mx-auto px-3 py-4 md:px-4 md:py-6">
+              <div className="flex items-center justify-between gap-4 flex-wrap">
+                <div className="title text-4xl md:text-5xl">COMPOUND</div>
+                <Tabs tab={tab} setTab={setTab} />
+              </div>
+
+              <div className="mt-4">{page}</div>
+            </div>
+
+            {runtimeError ? (
+              <div className="errorOverlay">
+                <div className="label" style={{ color: "rgba(222,82,105,0.95)" }}>
+                  Runtime error
+                </div>
+                <pre style={{ margin: "6px 0 0", whiteSpace: "pre-wrap", fontSize: "12px", color: "rgba(255,255,255,0.86)" }}>
+                  {runtimeError}
+                </pre>
+              </div>
+            ) : null}
+          </div>
+        );
+      }
+
+      // Boot safely (blank screen fix): in React 18 UMD, createRoot is on ReactDOMClient
+      (function mount() {
+        const rootEl = document.getElementById("root");
+        try {
+          if (window.ReactDOMClient && ReactDOMClient.createRoot) {
+            const root = ReactDOMClient.createRoot(rootEl);
+            root.render(<App />);
+            return;
+          }
+          // Fallback (shouldn't hit, but prevents blank screens)
+          if (window.ReactDOM && ReactDOM.render) {
+            ReactDOM.render(<App />, rootEl);
+            return;
+          }
+          rootEl.innerHTML = `<div style="padding:16px;color:#fff;font-family:system-ui">Failed to mount: ReactDOMClient not found.</div>`;
+        } catch (e) {
+          rootEl.innerHTML = `<pre style="white-space:pre-wrap;padding:16px;color:#fff;font-family:ui-monospace,monospace">${String(e && e.stack ? e.stack : e)}</pre>`;
+        }
+      })();
+    </script>
+  </body>
+</html>
